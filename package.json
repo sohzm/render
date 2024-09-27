@@ -1,0 +1,14 @@
+{
+    "name": "puppeteer-render-server",
+    "version": "1.0.0",
+    "description": "Server for rendering HTML to images using Puppeteer",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "express": "^4.17.1",
+        "puppeteer": "^19.0.0",
+        "body-parser": "^1.19.0"
+    }
+}
