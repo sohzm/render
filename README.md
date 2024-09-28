@@ -1,12 +1,20 @@
-`render`
+# render
+
+a puppeteer server that renders the html it recieves and returns image. it takes several params which you can see in the curl request example below
+
 
 ```sh
 # build and run the server
 docker build -t puppeteer-render-server .
 docker run -p 3000:3000 puppeteer-render-server
 
-# example curl request
 
+# or you can just
+docker pull sohzm/render
+docker run -p 3000:3000 sohzm/render
+
+
+# example curl request
 curl -X POST http://localhost:3000/render \
     -H "Content-Type: application/json" \
     -d '{
