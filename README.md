@@ -1,20 +1,28 @@
 # render
 
-a puppeteer server that renders the html it recieves and returns image. it takes several params which you can see in the curl request example below
+A Puppeteer server that renders HTML and returns images. It also supports taking screenshots of websites.
 
+## Quick Start
 
 ```sh
-# build and run the server
-docker build -t puppeteer-render-server .
-docker run -p 3000:3000 puppeteer-render-server
-
-
-# or you can just
 docker pull sohzm/render
 docker run -p 3000:3000 sohzm/render
+```
 
+Or build from source:
 
-# example curl request
+```sh
+docker build -t puppeteer-render-server .
+docker run -p 3000:3000 puppeteer-render-server
+```
+
+## Usage
+
+### /render
+
+Renders provided HTML and CSS.
+
+```sh
 curl -X POST http://localhost:3000/render \
     -H "Content-Type: application/json" \
     -d '{
@@ -32,3 +40,24 @@ curl -X POST http://localhost:3000/render \
     }' \
     --output rendered_image.png
 ```
+
+### /screenshot
+
+Takes screenshots of websites.
+
+Full page:
+```sh
+curl -X GET "http://localhost:3000/screenshot?url=https://www.example.com" --output fullpage_screenshot.png
+```
+
+With aspect ratio:
+```sh
+curl -X GET "http://localhost:3000/screenshot?url=https://www.example.com&ratio=16:9" --output widescreen_screenshot.png
+```
+
+## Parameters
+
+- `/render`: HTML, CSS, pixelRatio, scrollX, scrollY, viewportWidth, viewportHeight, width, height, x, y
+- `/screenshot`: url, ratio (optional)
+
+For detailed parameter descriptions, refer to the source code or API documentation.

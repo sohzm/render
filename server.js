@@ -80,6 +80,53 @@ app.post("/render", async (req, res) => {
     }
 });
 
+app.get("/screenshot", async (req, res) => {
+    try {
+        const { url, ratio } = req.query;
+
+        if (!url) {
+            return res.status(400).json({ error: "URL is required" });
+        }
+
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: "networkidle0" });
+
+        let screenshot;
+        if (ratio) {
+            const [width, height] = ratio.split(":").map(Number);
+            const aspectRatio = width / height;
+
+            await page.setViewport({
+                width: 1920,
+                height: Math.round(1920 / aspectRatio),
+                deviceScaleFactor: 1,
+            });
+
+            screenshot = await page.screenshot({
+                clip: {
+                    x: 0,
+                    y: 0,
+                    width: 1920,
+                    height: Math.round(1920 / aspectRatio),
+                },
+                encoding: "binary",
+            });
+        } else {
+            screenshot = await page.screenshot({
+                fullPage: true,
+                encoding: "binary",
+            });
+        }
+
+        await page.close();
+        res.contentType("image/png");
+        res.send(screenshot);
+    } catch (error) {
+        console.error("Screenshot error:", error);
+        res.status(500).json({ error: "Screenshot failed" });
+    }
+});
+
 initializeBrowser().then(() => {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
