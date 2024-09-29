@@ -60,4 +60,4 @@ curl -X GET "http://localhost:3000/screenshot?url=https://www.example.com&ratio=
 - `/render`: HTML, CSS, pixelRatio, scrollX, scrollY, viewportWidth, viewportHeight, width, height, x, y
 - `/screenshot`: url, ratio (optional)
 
-For detailed parameter descriptions, refer to the source code or API documentation.
+For detailed parameter descriptions, refer to the source code.
