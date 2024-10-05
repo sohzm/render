@@ -7,11 +7,11 @@ const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json({ limit: "50mb" }));
 
-// Allow requests from any origin
+// fuck CORS
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  next();
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
 });
 
 let browser;
@@ -25,25 +25,22 @@ async function initializeBrowser() {
 
 app.post("/render", async (req, res) => {
     try {
-        const { html, css, assets, pixelRatio, scrollX, scrollY, viewportHeight, viewportWidth, height, width, x, y } = req.body;
+        const { html, css, assets, pixelRatio, scrollX, scrollY, viewportWidth, viewportHeight, width, height, fullscreen } = req.body;
         const page = await browser.newPage();
-        
-        // Set viewport
+
         await page.setViewport({
             width: viewportWidth,
             height: viewportHeight,
             deviceScaleFactor: pixelRatio,
         });
-        
-        // Inject HTML and CSS
+
         await page.setContent(html);
         await page.evaluate((css) => {
             const style = document.createElement("style");
             style.textContent = css;
             document.head.appendChild(style);
         }, css);
-        
-        // Inject assets (assuming they are base64 encoded)
+
         if (assets) {
             for (const [key, value] of Object.entries(assets)) {
                 await page.evaluate(
@@ -51,31 +48,37 @@ app.post("/render", async (req, res) => {
                         localStorage.setItem(key, value);
                     },
                     key,
-                    value,
+                    value
                 );
             }
         }
-        
-        // Set scroll position
+
         await page.evaluate(
             (scrollX, scrollY) => {
                 window.scrollTo(scrollX, scrollY);
             },
             scrollX,
-            scrollY,
+            scrollY
         );
-        
-        // Capture screenshot
+
+        var w = viewportWidth;
+        var h = viewportHeight;
+
+        if (fullscreen) {
+            w = width;
+            h = height;
+        }
+
         const screenshot = await page.screenshot({
             clip: {
-                x: x,
-                y: y,
-                width: width,
-                height: height,
+                x: scrollX,
+                y: scrollY,
+                width: viewportWidth,
+                height: viewportHeight,
             },
             encoding: "binary",
         });
-        
+
         await page.close();
         res.contentType("image/png");
         res.send(screenshot);
@@ -91,10 +94,10 @@ app.get("/screenshot", async (req, res) => {
         if (!url) {
             return res.status(400).json({ error: "URL is required" });
         }
-        
+
         const page = await browser.newPage();
         await page.goto(url, { waitUntil: "networkidle0" });
-        
+
         let screenshot;
         if (ratio) {
             const [width, height] = ratio.split(":").map(Number);
@@ -119,7 +122,7 @@ app.get("/screenshot", async (req, res) => {
                 encoding: "binary",
             });
         }
-        
+
         await page.close();
         res.contentType("image/png");
         res.send(screenshot);

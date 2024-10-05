@@ -36,7 +36,8 @@ curl -X POST http://localhost:3000/render \
         "width": 300,
         "height": 200,
         "x": 0,
-        "y": 0
+        "y": 0,
+        "fullscreen": false
     }' \
     --output rendered_image.png
 ```
@@ -57,7 +58,7 @@ curl -X GET "http://localhost:3000/screenshot?url=https://www.example.com&ratio=
 
 ## Parameters
 
-- `/render`: HTML, CSS, pixelRatio, scrollX, scrollY, viewportWidth, viewportHeight, width, height, x, y
+- `/render`: HTML, CSS, pixelRatio, scrollX, scrollY, viewportWidth, viewportHeight, width, height, x, y, fullscreen
 - `/screenshot`: url, ratio (optional)
 
 For detailed parameter descriptions, refer to the source code.
