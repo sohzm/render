@@ -132,6 +132,177 @@ app.get("/screenshot", async (req, res) => {
     }
 });
 
+async function fetchAndProcessFavicon(url, page) {
+    try {
+        // Create a new page just for favicon
+        const faviconPage = await browser.newPage();
+        await faviconPage.setViewport({ width: 16, height: 16 });
+        
+        // Create an HTML page with just the favicon
+        await faviconPage.setContent(`
+            <html>
+                <head>
+                    <style>
+                        img {
+                            width: 16px;
+                            height: 16px;
+                            object-fit: contain;
+                        }
+                    </style>
+                </head>
+                <body style="margin: 0; padding: 0;">
+                    <img src="${url}" />
+                </body>
+            </html>
+        `);
+
+        // Wait for the image to load
+        await faviconPage.waitForSelector('img', { timeout: 5000 });
+        
+        // Capture the image as base64
+        const screenshot = await faviconPage.screenshot({
+            encoding: 'base64',
+            type: 'png'
+        });
+
+        await faviconPage.close();
+        return `data:image/png;base64,${screenshot}`;
+    } catch (error) {
+        console.error('Error processing favicon:', error);
+        
+        // Fallback to direct favicon URL if screenshot fails
+        try {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const base64 = buffer.toString('base64');
+            
+            // Detect mime type from the first bytes of the buffer
+            const mime = buffer[0] === 0x89 && buffer[1] === 0x50 ? 'image/png' : 'image/x-icon';
+            return `data:${mime};base64,${base64}`;
+        } catch (e) {
+            console.error('Fallback favicon fetch failed:', e);
+            return null;
+        }
+    }
+}
+
+app.post("/fetch-metadata", async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) {
+            return res.status(400).json({ error: "URL is required" });
+        }
+
+        const page = await browser.newPage();
+        
+        try {
+            await page.goto(url, { 
+                waitUntil: "networkidle0",
+                timeout: 10000
+            });
+
+            const metadata = await page.evaluate(() => {
+                const getMetaContent = (selectors) => {
+                    for (const selector of selectors) {
+                        const element = document.querySelector(selector);
+                        if (element) {
+                            const content = element.getAttribute('content');
+                            if (content) return content.trim();
+                        }
+                    }
+                    return null;
+                };
+
+                // Get favicon from various sources
+                let favicon = 
+                    document.querySelector('link[rel="icon"][sizes="16x16"]')?.href ||
+                    document.querySelector('link[rel="icon"]')?.href ||
+                    document.querySelector('link[rel="shortcut icon"]')?.href ||
+                    new URL('/favicon.ico', window.location.origin).href;
+
+                // Extract all relevant metadata
+                return {
+                    title: 
+                        document.querySelector('title')?.textContent?.trim() ||
+                        getMetaContent(['meta[property="og:title"]', 'meta[name="twitter:title"]']),
+                    
+                    description: 
+                        getMetaContent([
+                            'meta[name="description"]',
+                            'meta[property="og:description"]',
+                            'meta[name="twitter:description"]'
+                        ]),
+                    
+                    image: 
+                        getMetaContent([
+                            'meta[property="og:image"]',
+                            'meta[name="twitter:image"]'
+                        ]),
+                    
+                    siteName: 
+                        getMetaContent(['meta[property="og:site_name"]']),
+                    
+                    type: 
+                        getMetaContent(['meta[property="og:type"]']),
+                    
+                    author: 
+                        getMetaContent([
+                            'meta[name="author"]',
+                            'meta[property="article:author"]'
+                        ]),
+                    
+                    keywords: 
+                        getMetaContent(['meta[name="keywords"]']),
+                    
+                    favicon,
+                    url: window.location.href,
+                    
+                    // Additional social media specific
+                    twitterCard: 
+                        getMetaContent(['meta[name="twitter:card"]']),
+                    
+                    // Open Graph specific
+                    ogLocale: 
+                        getMetaContent(['meta[property="og:locale"]']),
+                    
+                    // Try to get publish date
+                    publishDate: 
+                        getMetaContent([
+                            'meta[property="article:published_time"]',
+                            'meta[name="date"]'
+                        ])
+                };
+            });
+
+            // Process favicon
+            if (metadata.favicon) {
+                metadata.favicon = await fetchAndProcessFavicon(metadata.favicon);
+            }
+
+            // Clean up the metadata by removing null values
+            Object.keys(metadata).forEach(key => {
+                if (metadata[key] === null || metadata[key] === undefined) {
+                    delete metadata[key];
+                }
+            });
+
+            await page.close();
+            res.json(metadata);
+        } catch (error) {
+            await page.close();
+            throw error;
+        }
+    } catch (error) {
+        console.error("Metadata fetch error:", error);
+        res.status(500).json({ 
+            error: "Failed to fetch metadata",
+            title: "Unable to load preview",
+            favicon: null
+        });
+    }
+});
+
 initializeBrowser().then(() => {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
